@@ -177,8 +177,8 @@ class StudyModal(ft.AlertDialog):
 
     def close_modal(self, e):
         self.open = False
-        self.page.close_dialog()
-        self.page.update()
+        if self.page:
+            self.page.update()
 
     def update_date_buttons(self):
         opts = ["HOJE", "ONTEM", "OUTRO"]

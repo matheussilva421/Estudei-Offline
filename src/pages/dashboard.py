@@ -11,18 +11,38 @@ class DashboardPage(ft.Container):
         self.page_ref = page
         self.padding = 30
         self.expand = True
+        self._subscribed = False
         
-        # Subscribe to events
-        if self.page_ref:
-             self.page_ref.pubsub.subscribe(self.on_message)
+        # Subscribe to events (will unsubscribe when navigating away)
+        self._subscribe_to_events()
              
         self.build_ui()
+    
+    def _subscribe_to_events(self):
+        """Subscribe to pubsub events."""
+        if self.page_ref and not self._subscribed:
+            self.page_ref.pubsub.subscribe(self.on_message)
+            self._subscribed = True
+    
+    def _unsubscribe_from_events(self):
+        """Unsubscribe from pubsub events to prevent memory leaks."""
+        if self.page_ref and self._subscribed:
+            try:
+                self.page_ref.pubsub.unsubscribe(self.on_message)
+            except Exception:
+                pass  # May fail if already unsubscribed
+            self._subscribed = False
+    
+    def will_unmount(self):
+        """Called when page is being replaced - cleanup subscriptions."""
+        self._unsubscribe_from_events()
         
     def on_message(self, message):
         if message == "study_saved":
             print("Dashboard received study_saved. Reloading...")
             self.reload_data()
-            self.update()
+            if self.page:
+                self.update()
 
     def build_ui(self):
         # Section 1: Top Stats

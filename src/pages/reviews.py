@@ -62,11 +62,14 @@ class ReviewsPage(ft.Container):
             # In fresh DB it's status. logic:
             status = r['status'] if 'status' in r.keys() and r['status'] is not None else (1 if r.get('is_completed') else 0)
             
-            # Parse date
+            # Parse date - try multiple formats
             try:
-                dt_obj = datetime.strptime(r['date_time'], "%d/%m/%Y %H:%M")
+                dt_obj = datetime.strptime(r['date_time'], "%Y-%m-%d %H:%M:%S")
             except (ValueError, TypeError):
-                dt_obj = now
+                try:
+                    dt_obj = datetime.strptime(r['date_time'], "%d/%m/%Y %H:%M")
+                except (ValueError, TypeError):
+                    dt_obj = now
             
             if status == 1:
                 concluidas.append(r)
