@@ -280,3 +280,136 @@ def get_study_sessions_by_subject(subject_id):
         WHERE subject_id = ? 
         ORDER BY date DESC
     ''', (subject_id,))
+
+
+# ============================================================================
+# OPTIMIZED BATCH QUERIES (Eliminate N+1 Patterns)
+# ============================================================================
+
+def get_plans_with_subject_count(archived=0):
+    """
+    Get all plans with subject count in a SINGLE query.
+    Eliminates N+1 when listing plans with subject count.
+    """
+    return db.fetch_all('''
+        SELECT p.*, COUNT(ps.subject_id) as subject_count
+        FROM plans p
+        LEFT JOIN plan_subjects ps ON p.id = ps.plan_id
+        WHERE p.is_archived = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+    ''', (archived,))
+
+
+def get_all_plans_with_subjects(archived=0):
+    """
+    Get all plans with their subjects loaded in TWO queries (not N+1).
+    Returns: {plan_id: {plan_data, subjects: [...]}}
+    """
+    # Query 1: Get all plans
+    plans = db.fetch_all('''
+        SELECT * FROM plans WHERE is_archived = ? ORDER BY created_at DESC
+    ''', (archived,))
+    
+    if not plans:
+        return []
+    
+    plan_ids = [p['id'] for p in plans]
+    placeholders = ','.join('?' * len(plan_ids))
+    
+    # Query 2: Get all subjects for all plans at once
+    subjects = db.fetch_all(f'''
+        SELECT ps.plan_id, s.*
+        FROM plan_subjects ps
+        JOIN subjects s ON ps.subject_id = s.id
+        WHERE ps.plan_id IN ({placeholders})
+    ''', tuple(plan_ids))
+    
+    # Group subjects by plan_id
+    plan_subjects = {}
+    for s in subjects:
+        pid = s['plan_id']
+        if pid not in plan_subjects:
+            plan_subjects[pid] = []
+        plan_subjects[pid].append(dict(s))
+    
+    # Merge into results
+    result = []
+    for p in plans:
+        plan_dict = dict(p)
+        plan_dict['subjects'] = plan_subjects.get(p['id'], [])
+        result.append(plan_dict)
+    
+    return result
+
+
+def get_subjects_with_stats():
+    """
+    Get all subjects with aggregated study stats in a SINGLE query.
+    Eliminates N+1 when building subject cards with time/performance.
+    """
+    return db.fetch_all('''
+        SELECT 
+            s.*,
+            COALESCE(SUM(ss.duration_seconds), 0) as total_study_seconds,
+            COALESCE(SUM(ss.questions_correct), 0) as total_correct,
+            COALESCE(SUM(ss.questions_wrong), 0) as total_wrong,
+            COUNT(ss.id) as session_count
+        FROM subjects s
+        LEFT JOIN study_sessions ss ON s.id = ss.subject_id
+        GROUP BY s.id
+        ORDER BY s.name
+    ''')
+
+
+def get_dashboard_stats():
+    """
+    Get all dashboard statistics in a SINGLE query.
+    Returns total time, performance, session count.
+    """
+    return db.fetch_one('''
+        SELECT 
+            COALESCE(SUM(duration_seconds), 0) as total_seconds,
+            COALESCE(SUM(questions_correct), 0) as total_correct,
+            COALESCE(SUM(questions_wrong), 0) as total_wrong,
+            COUNT(*) as session_count
+        FROM study_sessions
+    ''')
+
+
+def get_mock_exams_with_stats():
+    """
+    Get all mock exams with aggregated item stats in a SINGLE query.
+    """
+    return db.fetch_all('''
+        SELECT 
+            me.*,
+            COALESCE(SUM(mei.correct), 0) as total_correct,
+            COALESCE(SUM(mei.wrong), 0) as total_wrong,
+            COALESCE(SUM(mei.blank), 0) as total_blank,
+            COUNT(mei.id) as subject_count
+        FROM mock_exams me
+        LEFT JOIN mock_exam_items mei ON me.id = mei.mock_exam_id
+        GROUP BY me.id
+        ORDER BY me.date DESC
+    ''')
+
+
+def get_reviews_grouped():
+    """
+    Get all reviews grouped by status in a SINGLE query.
+    Returns: {status_code: [reminders]}
+    """
+    rows = db.fetch_all('''
+        SELECT * FROM reminders 
+        WHERE category = 'Revisão' 
+        ORDER BY status, date_time ASC
+    ''')
+    
+    grouped = {0: [], 1: [], 2: []}  # 0=Pending, 1=Done, 2=Ignored
+    for r in rows:
+        status = r['status'] or 0
+        if status in grouped:
+            grouped[status].append(dict(r))
+    
+    return grouped
