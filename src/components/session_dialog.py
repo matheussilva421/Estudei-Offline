@@ -5,7 +5,7 @@ from src.theme import AppTheme
 class SessionDialog(ft.AlertDialog):
     def __init__(self, page: ft.Page, on_start_timer=None):
         super().__init__()
-        self.page = page
+        self.page_ref = page
         self.on_start_timer = on_start_timer
         self.modal = True
         self.bgcolor = "#2c2d3e" # Darker surface
@@ -61,8 +61,8 @@ class SessionDialog(ft.AlertDialog):
 
     def close_dialog(self, e):
         self.open = False
-        self.page.close_dialog()
-        self.page.update()
+        self.page_ref.close_dialog()
+        self.page_ref.update()
 
     def start_study(self, e):
         self.close_dialog(e)
