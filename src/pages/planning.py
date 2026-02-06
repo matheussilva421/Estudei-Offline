@@ -6,7 +6,7 @@ from src.components.session_dialog import SessionDialog
 class PlanningPage(ft.Container):
     def __init__(self, page, start_timer_callback):
         super().__init__()
-        self.page = page
+        self.page_ref = page
         self.start_timer_callback = start_timer_callback
         self.padding = 30
         self.expand = True
@@ -64,10 +64,10 @@ class PlanningPage(ft.Container):
         ])
 
     def open_session_detail(self, e, title):
-        self.page.dialog = self.session_dialog
+        self.page_ref.dialog = self.session_dialog
         self.session_dialog.open = True
-        self.page.dialog.open = True
-        self.page.update()
+        self.page_ref.dialog.open = True
+        self.page_ref.update()
 
 def get_planning_page(page=None, start_timer_callback=None):
     return PlanningPage(page, start_timer_callback)
