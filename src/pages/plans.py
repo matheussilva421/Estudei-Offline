@@ -107,16 +107,8 @@ class PlansPage(ft.Container):
         )
 
     def open_plan_details(self, plan_id):
-        from src.pages.plan_details import get_plan_details_page
-        # We replace the entire view or handle navigation. 
-        # In main.py likely we have a way to switch pages. 
-        # Assuming we can just replace controls of this container or page.
-        # But PlansPage is a Container.
-        # Ideally, we should use a Navigator. 
-        # Hack: Clear page and add PlanDetailsPage (which has a Back button).
-        
-        self.page_ref.clean()
-        self.page_ref.add(get_plan_details_page(self.page_ref, plan_id))
+        # Use NavigationManager for proper navigation
+        self.page_ref.nav.push("plan_details", plan_id=plan_id)
 
     def create_archived_row(self, plan):
         return ft.ListTile(

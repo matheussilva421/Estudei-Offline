@@ -3,22 +3,12 @@ import flet as ft
 from src.theme import AppTheme
 from src.components.sidebar import Sidebar
 from src.pages.dashboard import get_dashboard_page
-from src.pages.plans import get_plans_page
-from src.pages.subjects import get_subjects_page
-from src.pages.planning import get_planning_page
-from src.pages.reviews import get_reviews_page
-from src.pages.history import get_history_page
-from src.pages.statistics import get_statistics_page
-from src.pages.mock_exams import get_mock_exams_page
 from src.components.study_modal import StudyModal
 from src.components.timer_overlay import TimerOverlay
 from src.components.planning_wizard import PlanningWizard
+from src.utils.navigation import NavigationManager
 
 def main(page: ft.Page):
-    # wrapper to allow checking the page via browser subagent if needed
-    # page.window_width = 1400
-    # page.window_height = 900
-    
     page.title = "Estudei - Gerenciador de Estudos"
     page.theme_mode = ft.ThemeMode.DARK
     page.theme = AppTheme.theme
@@ -26,13 +16,13 @@ def main(page: ft.Page):
     page.padding = 0
     page.spacing = 0
     
-    # Global App Bar (Topo direito: ajuda, notificações, configurações, perfil)
+    # Global App Bar
     page.appbar = ft.AppBar(
         leading=ft.Icon(ft.Icons.MENU_BOOK, color=AppTheme.primary),
         leading_width=40,
         title=ft.Text("Estudei Offline", weight=ft.FontWeight.BOLD, color="white"),
         center_title=False,
-        bgcolor="#1e1e2d", # Dark header matching sidebar/theme
+        bgcolor="#1e1e2d",
         actions=[
             ft.IconButton(ft.Icons.HELP_OUTLINE, icon_color="white", tooltip="Ajuda"),
             ft.IconButton(ft.Icons.NOTIFICATIONS_NONE, icon_color="white", tooltip="Notificações"),
@@ -42,11 +32,15 @@ def main(page: ft.Page):
                 bgcolor=AppTheme.primary,
                 radius=15,
             ),
-            ft.Container(width=10) # Padding right
+            ft.Container(width=10)
         ]
     )
 
+    # Content Area - This container holds the current page
     content_area = ft.Container(expand=True, content=get_dashboard_page(page))
+    
+    # Initialize Navigation Manager (attaches to page.nav)
+    nav = NavigationManager(page, content_area)
 
     # Timer Overlay
     timer_overlay = TimerOverlay(page)
@@ -56,26 +50,24 @@ def main(page: ft.Page):
     planning_wizard = PlanningWizard(page)
 
     def nav_change(label):
-        if label == "Dashboard":
-            content_area.content = get_dashboard_page(page)
-        elif label == "Planos":
-             content_area.content = get_plans_page(page)
-        elif label == "Disciplinas" or label == "Edital":
-             content_area.content = get_subjects_page(page)
-        elif label == "Planejamento":
-             content_area.content = get_planning_page(page, lambda: timer_overlay.show())
-        elif label == "Revisões":
-             content_area.content = get_reviews_page(page)
-        elif label == "Histórico":
-             content_area.content = get_history_page(page)
-        elif label == "Estatísticas":
-             content_area.content = get_statistics_page(page)
-        elif label == "Simulados":
-             content_area.content = get_mock_exams_page(page)
-        else:
-             content_area.content = get_dashboard_page(page) # Default
+        """Handle sidebar navigation clicks."""
+        page_map = {
+            "Dashboard": "dashboard",
+            "Planos": "plans",
+            "Disciplinas": "subjects",
+            "Edital": "subjects",
+            "Planejamento": "planning",
+            "Revisões": "reviews",
+            "Histórico": "history",
+            "Estatísticas": "statistics",
+            "Simulados": "mock_exams"
+        }
+        page_name = page_map.get(label, "dashboard")
         
-        content_area.update()
+        if page_name == "planning":
+            nav.navigate_to(page_name, on_timer_click=lambda: timer_overlay.show())
+        else:
+            nav.navigate_to(page_name)
 
     # Modal instance
     study_modal = StudyModal()
@@ -86,20 +78,18 @@ def main(page: ft.Page):
         page.dialog.open = True
         page.update()
 
-    # Floating Action Button to open Modal
+    # Floating Action Button
     page.floating_action_button = ft.FloatingActionButton(
         icon=ft.Icons.ADD,
         bgcolor=AppTheme.primary,
         on_click=open_study_modal
     )
     
-    # Basic layout scaffold
+    # Layout scaffold
     def app_layout():
         return ft.Row(
             controls=[
-                # Sidebar
                 Sidebar(page, on_nav_change=nav_change),
-                # Main Content placeholder
                 content_area
             ],
             expand=True

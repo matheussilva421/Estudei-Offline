@@ -240,16 +240,8 @@ class SubjectDetailsPage(ft.Container):
         self.page_ref.update()
 
     def go_back(self, e):
-        # Return to PlanDetails if linked, else PlansPage
-        if self.plan_id:
-            from src.pages.plan_details import get_plan_details_page
-            self.page_ref.clean()
-            self.page_ref.add(get_plan_details_page(self.page_ref, self.plan_id))
-        else:
-             # Default fallback
-             from src.pages.plans import get_plans_page
-             self.page_ref.clean()
-             self.page_ref.add(get_plans_page(self.page_ref))
+        # Use NavigationManager to go back
+        self.page_ref.nav.pop()
 
 def get_subject_details_page(page, subject_id, plan_id=None):
     return SubjectDetailsPage(page, subject_id, plan_id)

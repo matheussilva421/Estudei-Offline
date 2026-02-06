@@ -235,17 +235,12 @@ class PlanDetailsPage(ft.Container):
         # Let's pivot: Card click -> SubjectDetailsPage. 
         # SubjectDetailsPage header -> "Edit" button opens SubjectEditModal.
         
-        from src.pages.subject_details import get_subject_details_page
-        self.page_ref.clean()
-        self.page_ref.add(get_subject_details_page(self.page_ref, subject['id'], self.plan_id))
+        # Use NavigationManager for proper navigation
+        self.page_ref.nav.push("subject_details", subject_id=subject['id'], plan_id=self.plan_id)
 
     def go_back(self, e):
-        # We need to recreate PlansPage or standard navigation
-        # This depends on how main.py handles routing. 
-        # For now, let's assume we can set page content back to PlansPage
-        from src.pages.plans import get_plans_page
-        self.page_ref.clean()
-        self.page_ref.add(get_plans_page(self.page_ref))
+        # Use NavigationManager to go back
+        self.page_ref.nav.pop()
 
     def open_add_subject_modal(self, e):
         from src.components.subject_modal import SubjectModal
