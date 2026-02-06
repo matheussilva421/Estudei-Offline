@@ -67,9 +67,10 @@ class PlanningPage(ft.Container):
     def open_session_detail(self, e, title):
         """Open the session dialog."""
         print(f"Opening session detail for: {title}")  # Debug
-        self.session_dialog.open = True
         if self.page_ref:
-            self.page_ref.open(self.session_dialog)
+            self.page_ref.dialog = self.session_dialog
+            self.session_dialog.open = True
+            self.page_ref.update()
 
 def get_planning_page(page=None, start_timer_callback=None):
     return PlanningPage(page, start_timer_callback)
