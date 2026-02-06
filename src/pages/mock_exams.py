@@ -48,8 +48,7 @@ class MockExamsPage(ft.Container):
         self.list_container.controls = []
         for ex in exams:
             self.list_container.controls.append(self.create_exam_card(ex))
-            
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def create_indicator(self, value, label, icon):
         return ft.Container(

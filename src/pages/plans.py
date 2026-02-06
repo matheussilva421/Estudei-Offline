@@ -68,8 +68,7 @@ class PlansPage(ft.Container):
         archived = crud.get_plans(archived=1)
         for p in archived:
             self.archived_col.controls.append(self.create_archived_row(p))
-            
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def create_add_card(self):
         return ft.Container(

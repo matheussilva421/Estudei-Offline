@@ -77,7 +77,6 @@ class PlanDetailsPage(ft.Container):
         self.plan_data = crud.get_plan_by_id(self.plan_id)
         if not self.plan_data:
             self.content = ft.Text("Plano não encontrado.")
-            if self.page: self.update()
             return
 
         self.subjects_data = crud.get_subjects_by_plan(self.plan_id)
@@ -89,8 +88,7 @@ class PlanDetailsPage(ft.Container):
         # If syllabus tab active, reload it too
         if self.tabs.selected_index == 1:
             self.load_full_syllabus()
-            
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def load_full_syllabus(self):
         self.syllabus_content.controls = []

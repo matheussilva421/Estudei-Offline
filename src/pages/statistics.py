@@ -72,8 +72,7 @@ class StatisticsPage(ft.Container):
         
         # 3. Table
         self.build_topics_table()
-        
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def create_indicator(self, value, label, icon):
         return ft.Container(

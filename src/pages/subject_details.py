@@ -59,13 +59,12 @@ class SubjectDetailsPage(ft.Container):
         self.subject_data = crud.db.fetch_one("SELECT * FROM subjects WHERE id = ?", (self.subject_id,))
         if not self.subject_data:
             self.content = ft.Text("Disciplina não encontrada.")
-            if self.page: self.update()
             return
 
         self.update_header()
         self.update_indicators()
         self.load_tab_content()
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def update_header(self):
         color = self.subject_data['color'] or AppTheme.primary
