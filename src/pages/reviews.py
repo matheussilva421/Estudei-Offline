@@ -96,7 +96,7 @@ class ReviewsPage(ft.Container):
         
         self.update_tabs_ui()
         self.update_list_ui()
-        if self.page: self.update()
+        # Note: Don't call self.update() here - control may not be mounted yet
 
     def update_tabs_ui(self):
         tabs = ["PROGRAMADAS", "ATRASADAS", "IGNORADAS", "CONCLUÍDAS"]
