@@ -34,7 +34,8 @@ class HistoryPage(ft.Container):
     def load_data(self):
         self.update_indicators()
         self.load_history_list()
-        if self.page: self.update()
+        # Note: Don't call self.update() here - the control may not be mounted yet.
+        # The parent container will handle the initial render.
 
     def update_indicators(self):
         # Global Stats
