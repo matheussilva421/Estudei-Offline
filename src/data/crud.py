@@ -124,6 +124,38 @@ def get_topics_stats():
         FROM subjects
     ''')
 
+def get_subject_stats(subject_id):
+    """Return aggregated stats for a subject."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(duration_seconds), 0) as total_seconds,
+            COALESCE(SUM(questions_correct), 0) as total_correct,
+            COALESCE(SUM(questions_wrong), 0) as total_wrong,
+            COALESCE(SUM(pages_end - pages_start), 0) as total_pages
+        FROM study_sessions
+        WHERE subject_id = ?
+    ''', (subject_id,))
+
+def get_history_stats():
+    """Return global stats for history page indicators."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(duration_seconds), 0) as total_seconds,
+            COALESCE(SUM(questions_correct), 0) as total_correct,
+            COALESCE(SUM(questions_wrong), 0) as total_wrong,
+            COALESCE(SUM(pages_end - pages_start), 0) as total_pages
+        FROM study_sessions
+    ''')
+
+def get_topics_stats():
+    """Return global topics completion stats."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(total_topics), 0) as total_topics,
+            COALESCE(SUM(completed_topics), 0) as completed_topics
+        FROM subjects
+    ''')
+
 # --- Mock Exams ---
 def add_mock_exam(name, date, score, total, time_spent):
     db.execute_query("INSERT INTO mock_exams (name, date, score, total_questions, time_spent) VALUES (?, ?, ?, ?, ?)",
