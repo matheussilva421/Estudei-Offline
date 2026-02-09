@@ -151,17 +151,48 @@ class StudyModal(ft.AlertDialog):
         # Wait, create_stat_box structure changed
         # It's now Container -> Column -> Row -> [Column -> [Text, TextField], ...]
         
+        def get_stat_value(container, index):
+            try:
+                row = container.content.controls[1].controls
+                value = row[index].controls[1].value
+                return value if value is not None else ""
+            except (IndexError, AttributeError):
+                return ""
+
         try:
             # Questions
-             q_row = self.stats_questions.content.controls[1].controls
-             # q_row[0] is Column -> [Text, TextField]
-             correct = int(q_row[0].controls[1].value) if q_row[0].controls[1].value else 0
-             wrong = int(q_row[1].controls[1].value) if len(q_row) > 1 and q_row[1].controls[1].value else 0
-        except (ValueError, IndexError, AttributeError):
-             correct = 0
-             wrong = 0
-             
-        crud.add_study_session(subj_id, topic, duration, type_label, correct, wrong)
+            correct = int(get_stat_value(self.stats_questions, 0) or 0)
+            wrong = int(get_stat_value(self.stats_questions, 1) or 0)
+        except ValueError:
+            correct = 0
+            wrong = 0
+
+        pages_start = get_stat_value(self.stats_pages, 0)
+        pages_end = get_stat_value(self.stats_pages, 1)
+        try:
+            pages_start_val = int(pages_start or 0)
+        except ValueError:
+            pages_start_val = 0
+        try:
+            pages_end_val = int(pages_end or 0)
+        except ValueError:
+            pages_end_val = 0
+
+        video_start = get_stat_value(self.stats_video, 1)
+        video_end = get_stat_value(self.stats_video, 2)
+
+        crud.add_study_session(
+            subj_id,
+            topic,
+            duration,
+            type_label,
+            correct,
+            wrong,
+            pages_start=pages_start_val,
+            pages_end=pages_end_val,
+            video_start=video_start,
+            video_end=video_end,
+        )
         print(f"Saved session: {subj_name} - {duration}s")
         
         # Publish event
