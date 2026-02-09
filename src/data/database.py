@@ -39,6 +39,7 @@ class DatabaseManager:
             conn.row_factory = sqlite3.Row
             # Enable WAL mode for better concurrent access
             conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("PRAGMA busy_timeout=30000")
             self._local.conn = conn
             
