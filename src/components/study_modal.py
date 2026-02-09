@@ -139,12 +139,18 @@ class StudyModal(ft.AlertDialog):
         # Checkboxes for Type
         # Logic: If category matches, use it. Else fall back to heuristic
         cat = self.dropdown_category.controls[1].value
+        category_map = {
+            "Teoria": "TEORIA",
+            "Questões": "QUESTÕES",
+            "VídeoAula": "VÍDEOAULA",
+            "Revisão": "REVISÃO",
+        }
         if cat:
-            type_label = cat.upper()
+            type_label = category_map.get(cat, cat.upper())
         else:
             type_label = "TEORIA"
             if not self.check_theory.value:
-                 type_label = "QUESTOES"
+                 type_label = "QUESTÕES"
              
         # Stats
         # self.stats_questions.content (Column) -> controls[1] (Row) -> controls (List of Column) -> controls[1] (TextField)

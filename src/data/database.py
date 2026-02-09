@@ -109,7 +109,7 @@ class DatabaseManager:
                     pages_end INTEGER DEFAULT 0,
                     video_start TEXT,
                     video_end TEXT,
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
             
@@ -137,8 +137,8 @@ class DatabaseManager:
                     correct INTEGER DEFAULT 0,
                     wrong INTEGER DEFAULT 0,
                     blank INTEGER DEFAULT 0,
-                    FOREIGN KEY(mock_exam_id) REFERENCES mock_exams(id),
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(mock_exam_id) REFERENCES mock_exams(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
 
@@ -151,7 +151,7 @@ class DatabaseManager:
                     completed INTEGER DEFAULT 0,
                     order_index INTEGER DEFAULT 0,
                     material_link TEXT,
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
             
@@ -184,8 +184,8 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS plan_subjects (
                     plan_id INTEGER,
                     subject_id INTEGER,
-                    FOREIGN KEY(plan_id) REFERENCES plans(id),
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id),
+                    FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
                     PRIMARY KEY (plan_id, subject_id)
                 )
             ''')
