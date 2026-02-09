@@ -97,6 +97,7 @@ class StudyModal(ft.AlertDialog):
         ]
         self.actions_alignment = ft.MainAxisAlignment.END
 
+        self._last_message = None
         self.load_subjects()
 
     def load_subjects(self):
