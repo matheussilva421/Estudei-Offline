@@ -1,4 +1,3 @@
-
 import sqlite3
 import threading
 import atexit
@@ -31,8 +30,12 @@ class DatabaseManager:
 
     def get_connection(self):
         """
-        Get a thread-local database connection.
-        Each thread gets its own connection (thread-safe).
+        Return a thread-local SQLite connection for the current thread.
+        
+        The returned connection is created on first use for the thread and configured for concurrent access (WAL journal mode), with foreign key support enabled and a busy timeout set. The connection is tracked for later cleanup.
+        
+        Returns:
+        	sqlite3.Connection: The thread-local SQLite connection for the current thread.
         """
         if not hasattr(self._local, 'conn') or self._local.conn is None:
             conn = sqlite3.connect(self.DB_NAME, timeout=30.0)

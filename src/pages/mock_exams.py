@@ -1,4 +1,3 @@
-
 import flet as ft
 from src.theme import AppTheme
 import src.data.crud as crud
@@ -33,6 +32,13 @@ class MockExamsPage(ft.Container):
         self.load_data()
 
     def load_data(self):
+        """
+        Load mock exam data from the database and update the page indicators and list.
+        
+        Fetches all mock exams ordered by date (newest first), computes the total count and the most recent exam's score (formatted with one decimal or "-" when no exam or score is None), then replaces self.indicators_row.controls with two summary indicators and repopulates self.list_container.controls with exam cards.
+        
+        Note: this method updates control lists but does not call self.update() here.
+        """
         exams = crud.db.fetch_all("SELECT * FROM mock_exams ORDER BY date DESC")
         
         total = len(exams)

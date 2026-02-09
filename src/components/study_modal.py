@@ -1,4 +1,3 @@
-
 import flet as ft
 from src.theme import AppTheme
 import datetime
@@ -112,6 +111,14 @@ class StudyModal(ft.AlertDialog):
             self.subject_map[s['name']] = s['id']
             
     def save_session(self, e):
+        """
+        Save the current study form as a study session and optionally close the modal.
+        
+        Reads the form fields (subject, topic, duration, category/type, stats for questions/pages/video and related numeric values), persists a study session via the data CRUD layer, and publishes a "study_saved" event on the page. If saving fails due to a missing subject selection, the function prints an error and returns without saving. After saving, the modal is closed unless the "save and create new" checkbox is selected (in which case inputs are intended to be cleared and the modal kept open).
+        
+        Parameters:
+            e: Event object from the UI interaction that triggered the save (passed through to close_modal when closing the dialog).
+        """
         import src.data.crud as crud
         
         # Helper to parse time string "HH:MM:SS" to seconds
@@ -152,6 +159,18 @@ class StudyModal(ft.AlertDialog):
         # It's now Container -> Column -> Row -> [Column -> [Text, TextField], ...]
         
         def get_stat_value(container, index):
+            """
+            Extract the text value from a stat box column at the given zero-based index.
+            
+            Parameters:
+            	container: The stat box container expected to have a content.controls structure where
+            		the second control (index 1) is a row of column containers.
+            	index (int): Zero-based position of the column within that row.
+            
+            Returns:
+            	str: The extracted text value from the column's input control, or an empty string if the
+            	value is missing or the container structure is not as expected.
+            """
             try:
                 row = container.content.controls[1].controls
                 value = row[index].controls[1].value
