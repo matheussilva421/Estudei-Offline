@@ -132,8 +132,9 @@ class DashboardPage(ft.Container):
         )
 
     def reload_data(self):
-        self.controls.clear()
         self.build_ui()
+        if self.page:
+            self.update()
         
     def build_todays_plan(self):
         # Reusing similar logic to old Subject Panel but simplified for "Today"

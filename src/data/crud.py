@@ -259,6 +259,22 @@ def delete_study_session(session_id):
     """Delete a study session by ID."""
     db.execute_query("DELETE FROM study_sessions WHERE id = ?", (session_id,))
 
+def delete_subject(subject_id):
+    """Delete a subject and related records."""
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("BEGIN")
+        cursor.execute("DELETE FROM mock_exam_items WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM study_sessions WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM topics WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM plan_subjects WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
 def get_mock_exam_items(exam_id):
     """Get all items (per-subject breakdown) for a mock exam."""
     return db.fetch_all('''
