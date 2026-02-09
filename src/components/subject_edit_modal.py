@@ -58,6 +58,14 @@ class SubjectEditModal(ft.AlertDialog):
             ])
         )
         
+        self.remove_button = ft.OutlinedButton(
+            "Remover do Plano",
+            icon=ft.Icons.DELETE,
+            icon_color="red",
+            style=ft.ButtonStyle(color="red"),
+            on_click=self.remove_from_plan,
+            visible=bool(self.plan_id),
+        )
         self.actions = [
              ft.OutlinedButton("Remover do Plano", icon=ft.Icons.DELETE, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.remove_from_plan),
              ft.OutlinedButton("Excluir Disciplina", icon=ft.Icons.DELETE_FOREVER, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.confirm_delete_subject),
@@ -172,6 +180,8 @@ class SubjectEditModal(ft.AlertDialog):
         self.close_modal(e)
 
     def remove_from_plan(self, e):
+        if not self.plan_id:
+            return
         crud.remove_subject_from_plan(self.plan_id, self.subject_id)
         if self.on_save:
             self.on_save()
