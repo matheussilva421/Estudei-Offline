@@ -186,9 +186,6 @@ class StudyModal(ft.AlertDialog):
             pages_end_val = int(pages_end or 0)
         except ValueError:
             pages_end_val = 0
-        if pages_end_val and pages_start_val and pages_end_val < pages_start_val:
-            self._show_message("Páginas: o fim não pode ser menor que o início.")
-            return
 
         video_start = get_stat_value(self.stats_video, 1)
         video_end = get_stat_value(self.stats_video, 2)

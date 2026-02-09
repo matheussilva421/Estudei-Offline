@@ -96,7 +96,7 @@ def get_subject_stats(subject_id):
             COALESCE(SUM(duration_seconds), 0) as total_seconds,
             COALESCE(SUM(questions_correct), 0) as total_correct,
             COALESCE(SUM(questions_wrong), 0) as total_wrong,
-            COALESCE(SUM(CASE WHEN pages_end >= pages_start THEN pages_end - pages_start ELSE 0 END), 0) as total_pages
+            COALESCE(SUM(pages_end - pages_start), 0) as total_pages
         FROM study_sessions
         WHERE subject_id = ?
     ''', (subject_id,))
@@ -108,7 +108,7 @@ def get_history_stats():
             COALESCE(SUM(duration_seconds), 0) as total_seconds,
             COALESCE(SUM(questions_correct), 0) as total_correct,
             COALESCE(SUM(questions_wrong), 0) as total_wrong,
-            COALESCE(SUM(CASE WHEN pages_end >= pages_start THEN pages_end - pages_start ELSE 0 END), 0) as total_pages
+            COALESCE(SUM(pages_end - pages_start), 0) as total_pages
         FROM study_sessions
     ''')
 

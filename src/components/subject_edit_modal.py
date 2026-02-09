@@ -67,7 +67,7 @@ class SubjectEditModal(ft.AlertDialog):
             visible=bool(self.plan_id),
         )
         self.actions = [
-             self.remove_button,
+             ft.OutlinedButton("Remover do Plano", icon=ft.Icons.DELETE, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.remove_from_plan),
              ft.OutlinedButton("Excluir Disciplina", icon=ft.Icons.DELETE_FOREVER, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.confirm_delete_subject),
              ft.Container(expand=True),
              ft.OutlinedButton("Cancelar", on_click=self.close_modal),
