@@ -1,4 +1,3 @@
-
 import flet as ft
 from src.theme import AppTheme
 from src.components.stat_card import StatCard, PerformanceCard
@@ -46,6 +45,11 @@ class DashboardPage(ft.Container):
 
     def build_ui(self):
         # Section 1: Top Stats
+        """
+        Builds and assigns the dashboard UI components for the page.
+        
+        Populates the instance with top-level UI sections (top_stats, heatmap, planning_section, sidebar_section, and content) using current study and performance data retrieved from src.data.crud and the helper builder methods on this class (e.g., build_todays_plan, build_reminders_list, build_recent_activity). This method prepares the layout and visual blocks shown on the dashboard but does not perform navigation or state persistence.
+        """
         import src.data.crud as crud
         total_time_sec = crud.get_total_study_time()
         hours = int(total_time_sec // 3600)
@@ -132,12 +136,24 @@ class DashboardPage(ft.Container):
         )
 
     def reload_data(self):
+        """
+        Reconstructs the dashboard UI and requests a page update if this container is attached to a page.
+        
+        This rebuilds the internal UI structure (refreshing displayed data) and, when a Page reference exists, triggers a UI update so changes become visible.
+        """
         self.build_ui()
         if self.page:
             self.update()
         
     def build_todays_plan(self):
         # Reusing similar logic to old Subject Panel but simplified for "Today"
+        """
+        Builds the "Today's Plan" UI block showing each subject's daily goal and progress.
+        
+        Retrieves all subjects from the data store and returns a Column containing one entry per subject with the subject name, a mock daily goal label, and a progress bar. If no subjects are registered, returns a Text node stating that no subjects exist. Progress values and goal times are placeholders for demonstration and should be replaced by real scheduling logic.
+        Returns:
+        	ft.Control: A ft.Column with subject plan entries, or an ft.Text message when there are no subjects.
+        """
         list_col = ft.Column(spacing=10)
         import src.data.crud as crud
         subjects = crud.get_all_subjects()
