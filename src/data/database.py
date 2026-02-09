@@ -39,6 +39,7 @@ class DatabaseManager:
             conn.row_factory = sqlite3.Row
             # Enable WAL mode for better concurrent access
             conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("PRAGMA busy_timeout=30000")
             self._local.conn = conn
             
@@ -108,7 +109,7 @@ class DatabaseManager:
                     pages_end INTEGER DEFAULT 0,
                     video_start TEXT,
                     video_end TEXT,
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
             
@@ -136,8 +137,8 @@ class DatabaseManager:
                     correct INTEGER DEFAULT 0,
                     wrong INTEGER DEFAULT 0,
                     blank INTEGER DEFAULT 0,
-                    FOREIGN KEY(mock_exam_id) REFERENCES mock_exams(id),
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(mock_exam_id) REFERENCES mock_exams(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
 
@@ -150,7 +151,7 @@ class DatabaseManager:
                     completed INTEGER DEFAULT 0,
                     order_index INTEGER DEFAULT 0,
                     material_link TEXT,
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id)
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
                 )
             ''')
             
@@ -183,8 +184,8 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS plan_subjects (
                     plan_id INTEGER,
                     subject_id INTEGER,
-                    FOREIGN KEY(plan_id) REFERENCES plans(id),
-                    FOREIGN KEY(subject_id) REFERENCES subjects(id),
+                    FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
                     PRIMARY KEY (plan_id, subject_id)
                 )
             ''')
@@ -231,6 +232,146 @@ class DatabaseManager:
             if col_name not in columns:
                 cursor.execute(f"ALTER TABLE study_sessions ADD COLUMN {col_name} {col_def}")
                 print(f"Migration: Added '{col_name}' column to study_sessions table.")
+
+        self._normalize_study_session_types(cursor)
+        self._ensure_cascade_tables(cursor)
+
+    def _normalize_study_session_types(self, cursor):
+        """Normalize legacy study session type labels."""
+        cursor.execute("""
+            UPDATE study_sessions
+            SET type = CASE type
+                WHEN 'QUESTOES' THEN 'QUESTÕES'
+                WHEN 'QUESTAO' THEN 'QUESTÕES'
+                WHEN 'QUESTAOES' THEN 'QUESTÕES'
+                WHEN 'VIDEOAULA' THEN 'VÍDEOAULA'
+                WHEN 'VIDEO AULA' THEN 'VÍDEOAULA'
+                WHEN 'REVISAO' THEN 'REVISÃO'
+                ELSE type
+            END
+            WHERE type IN ('QUESTOES', 'QUESTAO', 'QUESTAOES', 'VIDEOAULA', 'VIDEO AULA', 'REVISAO')
+        """)
+
+    def _ensure_cascade_tables(self, cursor):
+        """Rebuild tables to ensure ON DELETE CASCADE in existing databases."""
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        self._ensure_cascade_for_table(
+            cursor,
+            table_name="study_sessions",
+            create_sql='''
+                CREATE TABLE study_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    subject_id INTEGER,
+                    topic TEXT,
+                    date TEXT,
+                    duration_seconds INTEGER,
+                    type TEXT,
+                    questions_correct INTEGER DEFAULT 0,
+                    questions_wrong INTEGER DEFAULT 0,
+                    pages_start INTEGER DEFAULT 0,
+                    pages_end INTEGER DEFAULT 0,
+                    video_start TEXT,
+                    video_end TEXT,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+                )
+            ''',
+            columns=[
+                "id",
+                "subject_id",
+                "topic",
+                "date",
+                "duration_seconds",
+                "type",
+                "questions_correct",
+                "questions_wrong",
+                "pages_start",
+                "pages_end",
+                "video_start",
+                "video_end",
+            ],
+        )
+        self._ensure_cascade_for_table(
+            cursor,
+            table_name="mock_exam_items",
+            create_sql='''
+                CREATE TABLE mock_exam_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    mock_exam_id INTEGER,
+                    subject_id INTEGER,
+                    weight REAL DEFAULT 1.0,
+                    correct INTEGER DEFAULT 0,
+                    wrong INTEGER DEFAULT 0,
+                    blank INTEGER DEFAULT 0,
+                    FOREIGN KEY(mock_exam_id) REFERENCES mock_exams(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+                )
+            ''',
+            columns=[
+                "id",
+                "mock_exam_id",
+                "subject_id",
+                "weight",
+                "correct",
+                "wrong",
+                "blank",
+            ],
+        )
+        self._ensure_cascade_for_table(
+            cursor,
+            table_name="topics",
+            create_sql='''
+                CREATE TABLE topics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    subject_id INTEGER,
+                    title TEXT,
+                    completed INTEGER DEFAULT 0,
+                    order_index INTEGER DEFAULT 0,
+                    material_link TEXT,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+                )
+            ''',
+            columns=[
+                "id",
+                "subject_id",
+                "title",
+                "completed",
+                "order_index",
+                "material_link",
+            ],
+        )
+        self._ensure_cascade_for_table(
+            cursor,
+            table_name="plan_subjects",
+            create_sql='''
+                CREATE TABLE plan_subjects (
+                    plan_id INTEGER,
+                    subject_id INTEGER,
+                    FOREIGN KEY(plan_id) REFERENCES plans(id) ON DELETE CASCADE,
+                    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+                    PRIMARY KEY (plan_id, subject_id)
+                )
+            ''',
+            columns=[
+                "plan_id",
+                "subject_id",
+            ],
+        )
+        cursor.execute("PRAGMA foreign_keys=ON")
+
+    def _ensure_cascade_for_table(self, cursor, table_name, create_sql, columns):
+        cursor.execute(f"PRAGMA foreign_key_list({table_name})")
+        fk_rows = cursor.fetchall()
+        has_cascade = any(row[6].upper() == "CASCADE" for row in fk_rows)
+        if has_cascade:
+            return
+        temp_table = f"{table_name}_old"
+        cursor.execute(f"ALTER TABLE {table_name} RENAME TO {temp_table}")
+        cursor.execute(create_sql)
+        column_list = ", ".join(columns)
+        cursor.execute(
+            f"INSERT INTO {table_name} ({column_list}) SELECT {column_list} FROM {temp_table}"
+        )
+        cursor.execute(f"DROP TABLE {temp_table}")
 
     def seed_data(self, cursor):
         """Insert initial seed data."""

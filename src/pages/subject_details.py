@@ -88,22 +88,18 @@ class SubjectDetailsPage(ft.Container):
         self.page_ref.update()
 
     def update_indicators(self):
-        # Calculate stats
-        # Total Seconds
-        res = crud.db.fetch_one("SELECT SUM(duration_seconds) as total FROM study_sessions WHERE subject_id = ?", (self.subject_id,))
-        total_seconds = res['total'] if res and res['total'] else 0
+        stats = crud.get_subject_stats(self.subject_id)
+        total_seconds = stats['total_seconds'] if stats else 0
         total_hours = total_seconds / 3600
         
         # Performance
-        res_perf = crud.db.fetch_one("SELECT SUM(questions_correct) as c, SUM(questions_wrong) as w FROM study_sessions WHERE subject_id = ?", (self.subject_id,))
-        correct = res_perf['c'] if res_perf and res_perf['c'] else 0
-        wrong = res_perf['w'] if res_perf and res_perf['w'] else 0
+        correct = stats['total_correct'] if stats else 0
+        wrong = stats['total_wrong'] if stats else 0
         total_q = correct + wrong
         pct = int((correct / total_q) * 100) if total_q > 0 else 0
         
         # Pages
-        res_pages = crud.db.fetch_one("SELECT SUM(pages_end - pages_start) as p FROM study_sessions WHERE subject_id = ?", (self.subject_id,))
-        pages_read = res_pages['p'] if res_pages and res_pages['p'] else 0
+        pages_read = stats['total_pages'] if stats else 0
         pages_per_hour = int(pages_read / total_hours) if total_hours > 0 else 0
         
         # Topics
@@ -144,7 +140,7 @@ class SubjectDetailsPage(ft.Container):
             self.tab_content.content = self.build_syllabus_list()
 
     def build_history_list(self):
-        sessions = crud.db.fetch_all("SELECT * FROM study_sessions WHERE subject_id = ? ORDER BY date DESC", (self.subject_id,))
+        sessions = crud.get_study_sessions_by_subject(self.subject_id)
         if not sessions:
             return ft.Text("Nenhum estudo registrado.", color="grey", italic=True)
             
