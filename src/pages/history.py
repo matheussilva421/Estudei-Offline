@@ -38,21 +38,19 @@ class HistoryPage(ft.Container):
         # The parent container will handle the initial render.
 
     def update_indicators(self):
-        # Global Stats
-        total_sec = crud.get_total_study_time()
+        stats = crud.get_history_stats()
+        total_sec = stats['total_seconds'] if stats else 0
         total_h = total_sec / 3600
-        
-        pct, corr, wrong = crud.get_performance_stats()
-        
-        # Pages read global (needs new crud or sql)
-        res_pages = crud.db.fetch_one("SELECT SUM(pages_end - pages_start) as p FROM study_sessions")
-        pages = res_pages['p'] if res_pages['p'] else 0
+        corr = stats['total_correct'] if stats else 0
+        wrong = stats['total_wrong'] if stats else 0
+        total = corr + wrong
+        pct = int((corr / total) * 100) if total > 0 else 0
+        pages = stats['total_pages'] if stats else 0
         pages_h = int(pages / total_h) if total_h > 0 else 0
-        
-        # Syllabus (Global)
-        res_topics = crud.db.fetch_one("SELECT SUM(total_topics) as t, SUM(completed_topics) as c FROM subjects")
-        total_t = res_topics['t'] if res_topics['t'] else 0
-        done_t = res_topics['c'] if res_topics['c'] else 0
+
+        topics = crud.get_topics_stats()
+        total_t = topics['total_topics'] if topics else 0
+        done_t = topics['completed_topics'] if topics else 0
         prog_pct = int(done_t / total_t * 100) if total_t > 0 else 0
 
         self.indicators_row.controls = [
@@ -78,12 +76,7 @@ class HistoryPage(ft.Container):
         )
 
     def load_history_list(self):
-        sessions = crud.db.fetch_all('''
-            SELECT ss.*, s.name as subject_name 
-            FROM study_sessions ss 
-            JOIN subjects s ON ss.subject_id = s.id 
-            ORDER BY ss.date DESC
-        ''')
+        sessions = crud.get_all_study_sessions()
         
         self.list_container.controls = []
         if not sessions:

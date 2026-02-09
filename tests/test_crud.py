@@ -7,11 +7,24 @@ import pytest
 import sqlite3
 import os
 import sys
+import threading
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.database import DatabaseManager
+
+
+def build_test_db(tmp_path):
+    test_db = DatabaseManager.__new__(DatabaseManager)
+    test_db.DB_NAME = str(tmp_path / "test_estudei.db")
+    test_db._local = threading.local()
+    test_db._init_lock = threading.Lock()
+    test_db._initialized = False
+    test_db._connections = []
+    test_db._connections_lock = threading.Lock()
+    test_db.init_db()
+    return test_db
 
 
 class TestDatabaseManager:
@@ -20,19 +33,12 @@ class TestDatabaseManager:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup a fresh test database for each test."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
-        # Create a test database manager
-        self.db = DatabaseManager.__new__(DatabaseManager)
-        self.db.DB_NAME = str(self.test_db)
-        self.db.conn = None
-        self.db.init_db()
+        self.db = build_test_db(tmp_path)
         
         yield
         
         # Cleanup
-        if self.db.conn:
-            self.db.conn.close()
+        self.db.close_all()
     
     def test_connection_created(self):
         """Test that database connection is properly created."""
@@ -80,17 +86,12 @@ class TestSubjectsCRUD:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup test database and import crud module."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
         # Patch the database before importing crud
         import src.data.database as database_module
         original_db = database_module.db
         
         # Create test database
-        test_db = DatabaseManager.__new__(DatabaseManager)
-        test_db.DB_NAME = str(self.test_db)
-        test_db.conn = None
-        test_db.init_db()
+        test_db = build_test_db(tmp_path)
         
         # Replace global db instance
         database_module.db = test_db
@@ -106,8 +107,7 @@ class TestSubjectsCRUD:
         
         # Restore original
         database_module.db = original_db
-        if test_db.conn:
-            test_db.conn.close()
+        test_db.close_all()
     
     def test_get_all_subjects(self):
         """Test retrieving all subjects."""
@@ -146,6 +146,28 @@ class TestSubjectsCRUD:
         assert subject['name'] == "Updated Name"
         assert subject['color'] == "#ffffff"
 
+    def test_delete_subject_cascades(self):
+        """Test deleting a subject removes related data."""
+        subject_id = self.crud.add_subject_return_id("To Delete", "Cat", "#123456")
+        self.crud.add_topic(subject_id, "Topic 1")
+        self.crud.add_study_session(subject_id, "Sessão", 1200, "TEORIA")
+
+        plan_id = self.crud.add_plan("Plan", "Obs", subject_ids=[subject_id])
+        cursor = self.db.execute_query(
+            "INSERT INTO mock_exams (name, date, score, total_questions) VALUES (?, ?, ?, ?)",
+            ("Mock", "2024-01-01", 80.0, 10),
+        )
+        exam_id = cursor.lastrowid
+        self.crud.add_mock_exam_items_bulk(exam_id, [(subject_id, 1.0, 5, 2, 0)])
+
+        self.crud.delete_subject(subject_id)
+
+        assert self.crud.get_subject_by_id(subject_id) is None
+        assert self.db.fetch_all("SELECT * FROM topics WHERE subject_id = ?", (subject_id,)) == []
+        assert self.db.fetch_all("SELECT * FROM study_sessions WHERE subject_id = ?", (subject_id,)) == []
+        assert self.db.fetch_all("SELECT * FROM plan_subjects WHERE plan_id = ?", (plan_id,)) == []
+        assert self.db.fetch_all("SELECT * FROM mock_exam_items WHERE subject_id = ?", (subject_id,)) == []
+
 
 class TestStudySessionsCRUD:
     """Tests for Study Sessions CRUD operations."""
@@ -153,15 +175,10 @@ class TestStudySessionsCRUD:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup test database."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
         import src.data.database as database_module
         original_db = database_module.db
         
-        test_db = DatabaseManager.__new__(DatabaseManager)
-        test_db.DB_NAME = str(self.test_db)
-        test_db.conn = None
-        test_db.init_db()
+        test_db = build_test_db(tmp_path)
         
         database_module.db = test_db
         self.db = test_db
@@ -174,8 +191,7 @@ class TestStudySessionsCRUD:
         yield
         
         database_module.db = original_db
-        if test_db.conn:
-            test_db.conn.close()
+        test_db.close_all()
     
     def test_add_study_session(self):
         """Test adding a study session."""
@@ -220,6 +236,24 @@ class TestStudySessionsCRUD:
         
         total = self.crud.get_total_study_time()
         assert total == 5400  # 3600 + 1800
+
+    def test_normalize_study_session_types(self):
+        """Test normalization of legacy study session type labels."""
+        subjects = self.crud.get_all_subjects()
+        subject_id = subjects[0]['id']
+        self.db.execute_query(
+            "INSERT INTO study_sessions (subject_id, topic, date, duration_seconds, type) VALUES (?, ?, ?, ?, ?)",
+            (subject_id, "Legacy", "2024-01-01 10:00:00", 600, "QUESTOES"),
+        )
+        cursor = self.db.get_connection().cursor()
+        self.db._run_migrations(cursor)
+        self.db.get_connection().commit()
+
+        result = self.db.fetch_one(
+            "SELECT type FROM study_sessions WHERE topic = ?",
+            ("Legacy",),
+        )
+        assert result["type"] == "QUESTÕES"
     
     def test_delete_study_session(self):
         """Test deleting a study session."""
@@ -245,15 +279,10 @@ class TestMockExamsCRUD:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup test database."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
         import src.data.database as database_module
         original_db = database_module.db
         
-        test_db = DatabaseManager.__new__(DatabaseManager)
-        test_db.DB_NAME = str(self.test_db)
-        test_db.conn = None
-        test_db.init_db()
+        test_db = build_test_db(tmp_path)
         
         database_module.db = test_db
         self.db = test_db
@@ -266,8 +295,7 @@ class TestMockExamsCRUD:
         yield
         
         database_module.db = original_db
-        if test_db.conn:
-            test_db.conn.close()
+        test_db.close_all()
     
     def test_add_mock_exam(self):
         """Test adding a mock exam."""
@@ -334,15 +362,10 @@ class TestPlansCRUD:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup test database."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
         import src.data.database as database_module
         original_db = database_module.db
         
-        test_db = DatabaseManager.__new__(DatabaseManager)
-        test_db.DB_NAME = str(self.test_db)
-        test_db.conn = None
-        test_db.init_db()
+        test_db = build_test_db(tmp_path)
         
         database_module.db = test_db
         self.db = test_db
@@ -355,8 +378,7 @@ class TestPlansCRUD:
         yield
         
         database_module.db = original_db
-        if test_db.conn:
-            test_db.conn.close()
+        test_db.close_all()
     
     def test_add_plan_without_subjects(self):
         """Test adding a plan without subjects."""
@@ -434,15 +456,10 @@ class TestRemindersCRUD:
     @pytest.fixture(autouse=True)
     def setup(self, tmp_path):
         """Setup test database."""
-        self.test_db = tmp_path / "test_estudei.db"
-        
         import src.data.database as database_module
         original_db = database_module.db
         
-        test_db = DatabaseManager.__new__(DatabaseManager)
-        test_db.DB_NAME = str(self.test_db)
-        test_db.conn = None
-        test_db.init_db()
+        test_db = build_test_db(tmp_path)
         
         database_module.db = test_db
         self.db = test_db
@@ -455,8 +472,7 @@ class TestRemindersCRUD:
         yield
         
         database_module.db = original_db
-        if test_db.conn:
-            test_db.conn.close()
+        test_db.close_all()
     
     def test_add_reminder(self):
         """Test adding a reminder."""

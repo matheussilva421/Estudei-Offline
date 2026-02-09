@@ -130,11 +130,14 @@ class StudyModal(ft.AlertDialog):
         
         # If no subject selected, for now just return (or show error)
         if not subj_id:
-            print("No subject selected")
+            self._show_message("Selecione uma disciplina antes de salvar.")
             return
 
         topic = self.input_topic.controls[1].value or "Tópico Geral"
         duration = parse_time(self.input_time.controls[1].value)
+        if duration <= 0:
+            self._show_message("Informe um tempo de estudo válido.")
+            return
         
         # Checkboxes for Type
         # Logic: If category matches, use it. Else fall back to heuristic
@@ -211,6 +214,16 @@ class StudyModal(ft.AlertDialog):
             pass # TODO: Reset logic
         else:
             self.close_modal(e)
+
+    def _show_message(self, message):
+        if not self.page:
+            return
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text(message),
+            bgcolor=AppTheme.surface,
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
 
     def close_modal(self, e):
         self.open = False

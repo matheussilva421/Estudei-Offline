@@ -33,7 +33,7 @@ class MockExamsPage(ft.Container):
         self.load_data()
 
     def load_data(self):
-        exams = crud.db.fetch_all("SELECT * FROM mock_exams ORDER BY date DESC")
+        exams = crud.get_mock_exams()
         
         total = len(exams)
         last_exam = exams[0] if exams else None

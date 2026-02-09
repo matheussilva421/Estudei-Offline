@@ -47,12 +47,16 @@ class DashboardPage(ft.Container):
     def build_ui(self):
         # Section 1: Top Stats
         import src.data.crud as crud
-        total_time_sec = crud.get_total_study_time()
+        stats = crud.get_dashboard_stats()
+        total_time_sec = stats['total_seconds'] if stats else 0
         hours = int(total_time_sec // 3600)
         mins = int((total_time_sec % 3600) // 60)
         time_str = f"{hours}h{mins}min"
         
-        pct, correct, wrong = crud.get_performance_stats()
+        correct = stats['total_correct'] if stats else 0
+        wrong = stats['total_wrong'] if stats else 0
+        total = correct + wrong
+        pct = int((correct / total) * 100) if total > 0 else 0
         
         self.top_stats = ft.Row(
             controls=[
