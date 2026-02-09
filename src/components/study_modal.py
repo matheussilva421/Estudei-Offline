@@ -187,12 +187,9 @@ class StudyModal(ft.AlertDialog):
             pages_end_val = int(pages_end or 0)
         except ValueError:
             pages_end_val = 0
-        if pages_end_val and pages_start_val and pages_end_val < pages_start_val:
-            self._show_message("Páginas: o fim não pode ser menor que o início.")
-            return
 
-        video_start = self._sanitize_text(get_stat_value(self.stats_video, 1))
-        video_end = self._sanitize_text(get_stat_value(self.stats_video, 2))
+        video_start = get_stat_value(self.stats_video, 1)
+        video_end = get_stat_value(self.stats_video, 2)
 
         crud.add_study_session(
             subj_id,
@@ -218,50 +215,14 @@ class StudyModal(ft.AlertDialog):
             self.close_modal(e)
 
     def _show_message(self, message):
-        message = message.strip() if message else ""
-        if not message:
-            return
         if not self.page:
             return
-        if self.page.snack_bar and self.page.snack_bar.open and self._last_message == message:
-            return
-        if self.page.snack_bar:
-            self.page.snack_bar.content = ft.Text(message)
-            self.page.snack_bar.bgcolor = AppTheme.surface
-        else:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text(message),
-                bgcolor=AppTheme.surface,
-            )
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text(message),
+            bgcolor=AppTheme.surface,
+        )
         self.page.snack_bar.open = True
-        self._last_message = message
         self.page.update()
-
-    def _sanitize_text(self, value):
-        return value.strip() if value else ""
-
-    def _reset_form(self):
-        self.input_time.controls[1].value = "00:00:00"
-        self.input_topic.controls[1].value = ""
-        self.input_material.controls[1].value = ""
-        self.dropdown_category.controls[1].value = None
-        self.dropdown_disc.controls[1].value = None
-        self.check_theory.value = False
-        self.check_planning.value = True
-        self.check_review.value = False
-        self.save_new_check.value = False
-        for box in (self.stats_questions, self.stats_pages, self.stats_video):
-            try:
-                row = box.content.controls[1].controls
-                for col in row:
-                    col.controls[1].value = ""
-            except (IndexError, AttributeError):
-                continue
-        self.stats_questions.visible = False
-        self.stats_pages.visible = False
-        self.stats_video.visible = False
-        if self.page:
-            self.update()
 
     def close_modal(self, e):
         self.open = False

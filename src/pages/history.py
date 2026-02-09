@@ -43,7 +43,8 @@ class HistoryPage(ft.Container):
         total_h = total_sec / 3600
         corr = stats['total_correct'] if stats else 0
         wrong = stats['total_wrong'] if stats else 0
-        pct = crud.calculate_performance(corr, wrong)
+        total = corr + wrong
+        pct = int((corr / total) * 100) if total > 0 else 0
         pages = stats['total_pages'] if stats else 0
         pages_h = int(pages / total_h) if total_h > 0 else 0
 
