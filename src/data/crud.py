@@ -85,9 +85,44 @@ def get_performance_stats():
     ''')
     c = res['correct'] if res['correct'] else 0
     w = res['wrong'] if res['wrong'] else 0
-    total = c + w
-    pct = int((c / total) * 100) if total > 0 else 0
-    return pct, c, w
+    return calculate_performance(c, w), c, w
+
+def calculate_performance(correct, wrong):
+    """Calculate performance percentage."""
+    total = correct + wrong
+    return int((correct / total) * 100) if total > 0 else 0
+
+def get_subject_stats(subject_id):
+    """Return aggregated stats for a subject."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(duration_seconds), 0) as total_seconds,
+            COALESCE(SUM(questions_correct), 0) as total_correct,
+            COALESCE(SUM(questions_wrong), 0) as total_wrong,
+            COALESCE(SUM(CASE WHEN pages_end >= pages_start THEN pages_end - pages_start ELSE 0 END), 0) as total_pages
+        FROM study_sessions
+        WHERE subject_id = ?
+    ''', (subject_id,))
+
+def get_history_stats():
+    """Return global stats for history page indicators."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(duration_seconds), 0) as total_seconds,
+            COALESCE(SUM(questions_correct), 0) as total_correct,
+            COALESCE(SUM(questions_wrong), 0) as total_wrong,
+            COALESCE(SUM(CASE WHEN pages_end >= pages_start THEN pages_end - pages_start ELSE 0 END), 0) as total_pages
+        FROM study_sessions
+    ''')
+
+def get_topics_stats():
+    """Return global topics completion stats."""
+    return db.fetch_one('''
+        SELECT
+            COALESCE(SUM(total_topics), 0) as total_topics,
+            COALESCE(SUM(completed_topics), 0) as completed_topics
+        FROM subjects
+    ''')
 
 # --- Mock Exams ---
 def add_mock_exam(name, date, score, total, time_spent):
@@ -259,6 +294,22 @@ def delete_study_session(session_id):
     """Delete a study session by ID."""
     db.execute_query("DELETE FROM study_sessions WHERE id = ?", (session_id,))
 
+def delete_subject(subject_id):
+    """Delete a subject and related records."""
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("BEGIN")
+        cursor.execute("DELETE FROM mock_exam_items WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM study_sessions WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM topics WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM plan_subjects WHERE subject_id = ?", (subject_id,))
+        cursor.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
 def get_mock_exam_items(exam_id):
     """Get all items (per-subject breakdown) for a mock exam."""
     return db.fetch_all('''
@@ -280,6 +331,15 @@ def get_study_sessions_by_subject(subject_id):
         WHERE subject_id = ? 
         ORDER BY date DESC
     ''', (subject_id,))
+
+def get_all_study_sessions():
+    """Get all study sessions with subject names."""
+    return db.fetch_all('''
+        SELECT ss.*, s.name as subject_name 
+        FROM study_sessions ss 
+        JOIN subjects s ON ss.subject_id = s.id 
+        ORDER BY ss.date DESC
+    ''')
 
 
 # ============================================================================

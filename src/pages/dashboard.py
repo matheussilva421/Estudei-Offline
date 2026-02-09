@@ -47,12 +47,15 @@ class DashboardPage(ft.Container):
     def build_ui(self):
         # Section 1: Top Stats
         import src.data.crud as crud
-        total_time_sec = crud.get_total_study_time()
+        stats = crud.get_dashboard_stats()
+        total_time_sec = stats['total_seconds'] if stats else 0
         hours = int(total_time_sec // 3600)
         mins = int((total_time_sec % 3600) // 60)
         time_str = f"{hours}h{mins}min"
         
-        pct, correct, wrong = crud.get_performance_stats()
+        correct = stats['total_correct'] if stats else 0
+        wrong = stats['total_wrong'] if stats else 0
+        pct = crud.calculate_performance(correct, wrong)
         
         self.top_stats = ft.Row(
             controls=[
@@ -132,8 +135,9 @@ class DashboardPage(ft.Container):
         )
 
     def reload_data(self):
-        self.controls.clear()
         self.build_ui()
+        if self.page:
+            self.update()
         
     def build_todays_plan(self):
         # Reusing similar logic to old Subject Panel but simplified for "Today"

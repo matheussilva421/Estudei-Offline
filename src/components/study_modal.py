@@ -130,38 +130,81 @@ class StudyModal(ft.AlertDialog):
         
         # If no subject selected, for now just return (or show error)
         if not subj_id:
-            print("No subject selected")
+            self._show_message("Selecione uma disciplina antes de salvar.")
             return
 
         topic = self.input_topic.controls[1].value or "Tópico Geral"
         duration = parse_time(self.input_time.controls[1].value)
+        if duration <= 0:
+            self._show_message("Informe um tempo de estudo válido.")
+            return
         
         # Checkboxes for Type
         # Logic: If category matches, use it. Else fall back to heuristic
         cat = self.dropdown_category.controls[1].value
+        category_map = {
+            "Teoria": "TEORIA",
+            "Questões": "QUESTÕES",
+            "VídeoAula": "VÍDEOAULA",
+            "Revisão": "REVISÃO",
+        }
         if cat:
-            type_label = cat.upper()
+            type_label = category_map.get(cat, cat.upper())
         else:
             type_label = "TEORIA"
             if not self.check_theory.value:
-                 type_label = "QUESTOES"
+                 type_label = "QUESTÕES"
              
         # Stats
         # self.stats_questions.content (Column) -> controls[1] (Row) -> controls (List of Column) -> controls[1] (TextField)
         # Wait, create_stat_box structure changed
         # It's now Container -> Column -> Row -> [Column -> [Text, TextField], ...]
         
+        def get_stat_value(container, index):
+            try:
+                row = container.content.controls[1].controls
+                value = row[index].controls[1].value
+                return value if value is not None else ""
+            except (IndexError, AttributeError):
+                return ""
+
         try:
             # Questions
-             q_row = self.stats_questions.content.controls[1].controls
-             # q_row[0] is Column -> [Text, TextField]
-             correct = int(q_row[0].controls[1].value) if q_row[0].controls[1].value else 0
-             wrong = int(q_row[1].controls[1].value) if len(q_row) > 1 and q_row[1].controls[1].value else 0
-        except (ValueError, IndexError, AttributeError):
-             correct = 0
-             wrong = 0
-             
-        crud.add_study_session(subj_id, topic, duration, type_label, correct, wrong)
+            correct = int(get_stat_value(self.stats_questions, 0) or 0)
+            wrong = int(get_stat_value(self.stats_questions, 1) or 0)
+        except ValueError:
+            correct = 0
+            wrong = 0
+
+        pages_start = get_stat_value(self.stats_pages, 0)
+        pages_end = get_stat_value(self.stats_pages, 1)
+        try:
+            pages_start_val = int(pages_start or 0)
+        except ValueError:
+            pages_start_val = 0
+        try:
+            pages_end_val = int(pages_end or 0)
+        except ValueError:
+            pages_end_val = 0
+        if pages_end_val and pages_start_val and pages_end_val < pages_start_val:
+            self._show_message("Páginas: o fim não pode ser menor que o início.")
+            return
+
+        video_start = self._sanitize_text(get_stat_value(self.stats_video, 1))
+        video_end = self._sanitize_text(get_stat_value(self.stats_video, 2))
+
+        crud.add_study_session(
+            subj_id,
+            topic,
+            duration,
+            type_label,
+            correct,
+            wrong,
+            pages_start=pages_start_val,
+            pages_end=pages_end_val,
+            video_start=video_start,
+            video_end=video_end,
+        )
         print(f"Saved session: {subj_name} - {duration}s")
         
         # Publish event
@@ -174,6 +217,26 @@ class StudyModal(ft.AlertDialog):
             pass # TODO: Reset logic
         else:
             self.close_modal(e)
+
+    def _show_message(self, message):
+        if not self.page or self._is_snackbar_open():
+            return
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text(message),
+            bgcolor=AppTheme.surface,
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _sanitize_text(self, value):
+        return value.strip() if value else ""
+
+    def _is_snackbar_open(self):
+        if not self.page or not self.page.snack_bar:
+            return False
+        if getattr(self.page.snack_bar, "open", False):
+            return True
+        return False
 
     def close_modal(self, e):
         self.open = False
