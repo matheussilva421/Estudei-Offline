@@ -210,9 +210,7 @@ class StudyModal(ft.AlertDialog):
              self.page.pubsub.send_all("study_saved")
         
         if self.save_new_check.value:
-            # Just clear inputs, keep modal open
-            # self.input_time.controls[1].value = "00:00:00"
-            pass # TODO: Reset logic
+            self._reset_form()
         else:
             self.close_modal(e)
 
