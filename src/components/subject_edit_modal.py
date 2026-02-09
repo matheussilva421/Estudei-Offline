@@ -58,8 +58,17 @@ class SubjectEditModal(ft.AlertDialog):
             ])
         )
         
+        self.remove_button = ft.OutlinedButton(
+            "Remover do Plano",
+            icon=ft.Icons.DELETE,
+            icon_color="red",
+            style=ft.ButtonStyle(color="red"),
+            on_click=self.remove_from_plan,
+            visible=bool(self.plan_id),
+        )
         self.actions = [
-             ft.OutlinedButton("Remover do Plano", icon=ft.Icons.DELETE, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.remove_from_plan),
+             self.remove_button,
+             ft.OutlinedButton("Excluir Disciplina", icon=ft.Icons.DELETE_FOREVER, icon_color="red", style=ft.ButtonStyle(color="red"), on_click=self.confirm_delete_subject),
              ft.Container(expand=True),
              ft.OutlinedButton("Cancelar", on_click=self.close_modal),
              ft.ElevatedButton("Salvar", bgcolor=AppTheme.primary, color="white", on_click=self.save_changes)
@@ -171,10 +180,35 @@ class SubjectEditModal(ft.AlertDialog):
         self.close_modal(e)
 
     def remove_from_plan(self, e):
+        if not self.plan_id:
+            return
         crud.remove_subject_from_plan(self.plan_id, self.subject_id)
         if self.on_save:
             self.on_save()
         self.close_modal(e)
+
+    def confirm_delete_subject(self, e):
+        def confirm_action(_):
+            self.page_ref.close_dialog()
+            self.delete_subject()
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Excluir disciplina"),
+            content=ft.Text("Tem certeza? Essa ação remove sessões, tópicos e vínculos."),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: self.page_ref.close_dialog()),
+                ft.TextButton("Excluir", on_click=confirm_action),
+            ],
+        )
+        self.page_ref.dialog = dialog
+        dialog.open = True
+        self.page_ref.update()
+
+    def delete_subject(self):
+        crud.delete_subject(self.subject_id)
+        if self.on_save:
+            self.on_save()
+        self.close_modal(None)
 
     def close_modal(self, e):
         self.open = False
