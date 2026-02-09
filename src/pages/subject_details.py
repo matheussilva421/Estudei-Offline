@@ -95,7 +95,8 @@ class SubjectDetailsPage(ft.Container):
         # Performance
         correct = stats['total_correct'] if stats else 0
         wrong = stats['total_wrong'] if stats else 0
-        pct = crud.calculate_performance(correct, wrong)
+        total_q = correct + wrong
+        pct = int((correct / total_q) * 100) if total_q > 0 else 0
         
         # Pages
         pages_read = stats['total_pages'] if stats else 0

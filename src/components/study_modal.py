@@ -186,12 +186,9 @@ class StudyModal(ft.AlertDialog):
             pages_end_val = int(pages_end or 0)
         except ValueError:
             pages_end_val = 0
-        if pages_end_val and pages_start_val and pages_end_val < pages_start_val:
-            self._show_message("Páginas: o fim não pode ser menor que o início.")
-            return
 
-        video_start = self._sanitize_text(get_stat_value(self.stats_video, 1))
-        video_end = self._sanitize_text(get_stat_value(self.stats_video, 2))
+        video_start = get_stat_value(self.stats_video, 1)
+        video_end = get_stat_value(self.stats_video, 2)
 
         crud.add_study_session(
             subj_id,
@@ -219,7 +216,7 @@ class StudyModal(ft.AlertDialog):
             self.close_modal(e)
 
     def _show_message(self, message):
-        if not self.page or self._is_snackbar_open():
+        if not self.page:
             return
         self.page.snack_bar = ft.SnackBar(
             content=ft.Text(message),
@@ -227,16 +224,6 @@ class StudyModal(ft.AlertDialog):
         )
         self.page.snack_bar.open = True
         self.page.update()
-
-    def _sanitize_text(self, value):
-        return value.strip() if value else ""
-
-    def _is_snackbar_open(self):
-        if not self.page or not self.page.snack_bar:
-            return False
-        if getattr(self.page.snack_bar, "open", False):
-            return True
-        return False
 
     def close_modal(self, e):
         self.open = False
