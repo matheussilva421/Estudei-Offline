@@ -55,7 +55,8 @@ class DashboardPage(ft.Container):
         
         correct = stats['total_correct'] if stats else 0
         wrong = stats['total_wrong'] if stats else 0
-        pct = crud.calculate_performance(correct, wrong)
+        total = correct + wrong
+        pct = int((correct / total) * 100) if total > 0 else 0
         
         self.top_stats = ft.Row(
             controls=[
